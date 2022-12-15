@@ -20,7 +20,7 @@ with open('students.json', encoding='utf-8') as file:
 
 @app.get("/{student}")
 async def history(request: Request, student, query: int = 5):
-    if not STUDENTS.get(student): return PlainTextResponse('ничего не найдено ^_^')
+    if not STUDENTS.get(student.lower()): return PlainTextResponse('ничего не найдено ^_^')
     googlesheet_data = student_history(student)
     number = int(googlesheet_data[1][0][0])
     message = (f'Доступно уроков: {number} \n', f'Неоплаченных уроков: {abs(number)} \n')[number<0]
