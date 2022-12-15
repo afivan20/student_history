@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{name}}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/semantic-ui@2.4.2/dist/semantic.min.css">
+    <link id="favicon" rel="icon" type="image/x-icon" href="static/favicon.png">
+</head>
+
+<body>
+    <div style="margin-top: 50px;" class="ui container">
+        <h1 class="ui center aligned header">{{name}}</h1>
+        <h2 class="ui center aligned header" {% if 'Неоплаченных' in message %}style="background-color: #F4C3C3;"{% endif %}>{{message}}</h2>
+        <hr>
+    </div>
+
+    <div style="margin-top: 50px;" class="ui container">
+        {% for lesson in history %}
+        <div  class="ui segment"{% if 'Оплата' in lesson %}style="background-color: #AEFCBA;"{% endif %}>
+            <p class="ui big center aligned header">{{lesson }}</p>          
+        </div>
+        {% endfor %}
+        {%if is_more%}
+        <center>
+            <a class="ui blue button" href="/{{ student_id }}?query={{query+5}}">Ещё</a>
+        </center>
+        {%endif%}
+    </div>
+
+</body>
+</html>
