@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход - Админ-панель</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/semantic-ui@2.4.2/dist/semantic.min.css">
+</head>
+<body>
+    <div class="ui middle aligned center aligned grid" style="height: 100vh;">
+        <div class="column" style="max-width: 450px;">
+            <h2 class="ui header">
+                <div class="content">
+                    Вход в админ-панель
+                </div>
+            </h2>
+            <form class="ui large form" method="POST" action="/admin/login">
+                <div class="ui stacked segment">
+                    {% if error %}
+                    <div class="ui error message">
+                        <p>{{ error }}</p>
+                    </div>
+                    {% endif %}
+                    <div class="field">
+                        <div class="ui left icon input">
+                            <i class="user icon"></i>
+                            <input type="text" name="username" placeholder="Логин" required>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <div class="ui left icon input">
+                            <i class="lock icon"></i>
+                            <input type="password" name="password" placeholder="Пароль" required>
+                        </div>
+                    </div>
+                    <button class="ui fluid large primary submit button" type="submit">Войти</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

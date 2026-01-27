@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Кэширование - Админ-панель</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/semantic-ui@2.4.2/dist/semantic.min.css">
+</head>
+<body>
+    <div class="ui container" style="margin-top: 50px;">
+        <div class="ui menu">
+            <a class="item" href="/admin/dashboard">Dashboard</a>
+            <a class="item" href="/admin/students">Студенты</a>
+            <a class="item" href="/admin/telegram">Telegram</a>
+            <a class="item" href="/admin/tokens">Токены</a>
+            <a class="item" href="/admin/logs">Логи</a>
+            <a class="item" href="/admin/cache">Кэширование</a>
+            <a class="item" href="/admin/messages">Сообщения</a>
+            <div class="right menu">
+                <a class="item" href="/admin/logout">Выход</a>
+            </div>
+        </div>
+
+        <h1 class="ui header">Управление кэшем Google Sheets</h1>
+
+        <div class="ui info message">
+            <p><strong>TTL кэша:</strong> 300 секунд (5 минут). Данные студентов кэшируются для снижения нагрузки на Google Sheets API.</p>
+        </div>
+
+        <!-- Cache Statistics -->
+        <div class="ui four statistics" style="margin-bottom: 30px;">
+            <div class="statistic">
+                <div class="value">{{ cache_stats.total_entries }}</div>
+                <div class="label">Всего записей</div>
+            </div>
+            <div class="statistic">
+                <div class="value">{{ cache_stats.active_entries }}</div>
+                <div class="label">Активных</div>
+            </div>
+            <div class="statistic">
+                <div class="value">{{ cache_stats.expired_entries }}</div>
+                <div class="label">Просроченных</div>
+            </div>
+            <div class="statistic">
+                <div class="value" style="font-size: 1rem;">
+                    {{ cache_stats.last_connection[:19] if cache_stats.last_connection else 'Нет' }}
+                </div>
+                <div class="label">Последнее подключение</div>
+            </div>
+        </div>
+
+        <!-- Clear All Cache -->
+        <div class="ui segment">
+            <h3>Очистить весь кэш</h3>
+            <p>Удалить все закэшированные данные студентов. Следующие запросы будут получать данные напрямую из Google Sheets.</p>
+            <form method="POST" action="/admin/cache/clear" id="clearAllForm">
+                <button class="ui red button" type="submit">
+                    <i class="trash icon"></i> Очистить весь кэш
+                </button>
+            </form>
+        </div>
+
+        <!-- Clear Specific Student Cache -->
+        <form class="ui form segment" method="POST" action="/admin/cache/clear" id="clearStudentForm">
+            <h3>Очистить кэш для студента</h3>
+            <div class="two fields">
+                <div class="field">
+                    <label>Студент</label>
+                    <select name="student" required class="ui dropdown">
+                        <option value="">Выберите студента...</option>
+                        {% for student in students %}
+                        <option value="{{ student.google_sheet_name }}">{{ student.full_name }} ({{ student.google_sheet_name }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="field" style="display: flex; align-items: flex-end;">
+                    <button class="ui orange button" type="submit">
+                        <i class="eraser icon"></i> Очистить кэш студента
+                    </button>
+                </div>
+            </div>
+        </form>
+
+        <!-- Cached Keys Table -->
+        <h2 class="ui header">Закэшированные ключи</h2>
+        {% if cache_stats.cache_keys %}
+        <table class="ui celled table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Ключ кэша</th>
+                    <th>Студент</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for key in cache_stats.cache_keys %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td><code>{{ key }}</code></td>
+                    <td>{{ key.replace('student_history:', '') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="ui message">
+            <p>Кэш пуст. Данные будут закэшированы при следующем запросе студента.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <script>
+        document.getElementById('clearAllForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            if (!confirm('Очистить весь кэш?')) return;
+
+            const response = await fetch('/admin/cache/clear', { method: 'POST' });
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert('Ошибка при очистке кэша');
+            }
+        });
+
+        document.getElementById('clearStudentForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const student = this.querySelector('select[name="student"]').value;
+            if (!student) {
+                alert('Выберите студента');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('student', student);
+
+            const response = await fetch('/admin/cache/clear', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert('Ошибка при очистке кэша');
+            }
+        });
+    </script>
+</body>
+</html>

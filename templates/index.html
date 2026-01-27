@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>История уроков</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/semantic-ui@2.4.2/dist/semantic.min.css">
+    <link id="favicon" rel="icon" type="image/x-icon" href="/static/favicon.png">
+    <style>
+        :root {
+            color-scheme: light;
+            --bg-color: #ffffff;
+            --text-color: rgba(0, 0, 0, 0.87);
+            --secondary-bg: #f9f9f9;
+            --segment-bg: #ffffff;
+            --border-color: rgba(34, 36, 38, 0.15);
+        }
+
+        body {
+            padding-top: 50px;
+            background-color: var(--bg-color) !important;
+            color: var(--text-color) !important;
+        }
+
+        .ui.segment {
+            background-color: var(--segment-bg);
+            color: var(--text-color);
+            border-color: var(--border-color);
+        }
+
+        .ui.header {
+            color: var(--text-color);
+        }
+
+        .ui.message {
+            background-color: var(--secondary-bg);
+            color: var(--text-color);
+        }
+
+        .ui.form .field > label {
+            color: var(--text-color);
+        }
+
+        .ui.input input {
+            background-color: var(--segment-bg);
+            color: var(--text-color);
+            border-color: var(--border-color);
+        }
+
+        .loader-container {
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .student-card {
+            padding: 15px !important;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            border-radius: 8px;
+            margin-bottom: 10px !important;
+        }
+
+        .student-card:hover {
+            background-color: var(--secondary-bg);
+        }
+
+        .student-card .content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .student-card .student-name {
+            font-size: 1.2em;
+            font-weight: 500;
+        }
+
+        .student-card .icon {
+            color: var(--text-color);
+            opacity: 0.5;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="ui container">
+        <h1 class="ui center aligned header">История уроков</h1>
+
+        <!-- Telegram Web App автоматическая авторизация -->
+        <div id="telegram-auth" class="ui segment loader-container">
+            <div class="ui active centered inline loader"></div>
+            <p class="ui center aligned" style="margin-left: 20px;">Проверка аутентификации...</p>
+        </div>
+
+        <!-- Ручной вход через UUID токен -->
+        <div id="manual-auth" class="ui segment" style="display: none;">
+            <h3 class="ui header">Вход через токен</h3>
+            <div class="ui info message">
+                <p>Откройте приложение через Telegram бота или введите ваш токен доступа.</p>
+            </div>
+            <form class="ui form" id="token-form">
+                <div class="field">
+                    <label>Токен доступа</label>
+                    <input type="text" id="token-input" placeholder="Введите ваш токен доступа" required>
+                </div>
+                <button class="ui primary button" type="submit">Войти</button>
+            </form>
+        </div>
+
+        <!-- Выбор студента (если несколько) -->
+        <div id="student-select" class="ui segment" style="display: none;">
+            <h3 class="ui header center aligned">Выберите ученика</h3>
+            <div id="students-list" class="ui relaxed divided list">
+                <!-- Студенты добавляются динамически -->
+            </div>
+        </div>
+
+        <!-- Сообщение об ошибке -->
+        <div id="error-message" class="ui error message" style="display: none;">
+            <i class="close icon"></i>
+            <div class="header">Ошибка аутентификации</div>
+            <p id="error-text"></p>
+        </div>
+    </div>
+
+    <script>
+        // Закрытие error message
+        document.querySelectorAll('.message .close').forEach(function(el) {
+            el.addEventListener('click', function() {
+                el.parentElement.style.display = 'none';
+            });
+        });
+
+        // Показать ошибку
+        function showError(message) {
+            const errorDiv = document.getElementById('error-message');
+            const errorText = document.getElementById('error-text');
+            errorText.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        // Скрыть loader, показать форму
+        function showManualAuth() {
+            document.getElementById('telegram-auth').style.display = 'none';
+            document.getElementById('manual-auth').style.display = 'block';
+        }
+
+        // Показать выбор студента
+        function showStudentSelect(students, telegramId) {
+            document.getElementById('telegram-auth').style.display = 'none';
+            document.getElementById('student-select').style.display = 'block';
+
+            const listEl = document.getElementById('students-list');
+            listEl.innerHTML = '';
+
+            students.forEach(student => {
+                const item = document.createElement('div');
+                item.className = 'item student-card';
+                item.innerHTML = `
+                    <div class="content">
+                        <span class="student-name">${student.name}</span>
+                        <i class="angle right icon"></i>
+                    </div>
+                `;
+                item.addEventListener('click', () => selectStudent(student.slug, telegramId));
+                listEl.appendChild(item);
+            });
+        }
+
+        // Получить telegram_id из initData (fallback для Desktop Telegram)
+        function getTelegramId() {
+            const initData = window.Telegram?.WebApp?.initData;
+            if (initData) {
+                try {
+                    const params = new URLSearchParams(initData);
+                    const userJson = params.get('user');
+                    if (userJson) {
+                        const user = JSON.parse(userJson);
+                        return user.id?.toString();
+                    }
+                } catch (e) {
+                    console.error('Error parsing initData:', e);
+                }
+            }
+            return null;
+        }
+
+        // Выбор конкретного студента
+        function selectStudent(studentSlug, telegramId) {
+            const listEl = document.getElementById('students-list');
+            listEl.innerHTML = '<div class="ui active centered inline loader"></div><p style="text-align: center; margin-top: 10px;">Авторизация...</p>';
+
+            // Использовать переданный telegramId или попробовать извлечь из initData
+            const effectiveTelegramId = telegramId || getTelegramId();
+
+            fetch('/auth/select-student', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Telegram-Init-Data': window.Telegram?.WebApp?.initData || '',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({
+                    student_slug: studentSlug,
+                    telegram_id: effectiveTelegramId
+                }),
+                credentials: 'include'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.redirect_url) {
+                    // Cookie selected_student_id установлена сервером
+                    window.location.href = data.redirect_url;
+                } else {
+                    showError(data.error || 'Ошибка выбора студента');
+                    showManualAuth();
+                }
+            })
+            .catch(error => {
+                console.error('Select error:', error);
+                showError('Ошибка соединения с сервером.');
+                showManualAuth();
+            });
+        }
+
+        // Обработка формы ручного ввода токена
+        document.getElementById('token-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const token = document.getElementById('token-input').value.trim();
+            if (token) {
+                window.location.href = `/t/${token}`;
+            }
+        });
+
+        // Определение темной темы
+        function isColorDark(hexColor) {
+            if (!hexColor || hexColor.length < 7) return false;
+            const r = parseInt(hexColor.slice(1, 3), 16);
+            const g = parseInt(hexColor.slice(3, 5), 16);
+            const b = parseInt(hexColor.slice(5, 7), 16);
+            const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+            return luminance < 0.5;
+        }
+
+        // Проверяем, открыто ли в Telegram Web App
+        if (window.Telegram && window.Telegram.WebApp) {
+            const tg = window.Telegram.WebApp;
+            tg.ready();
+            tg.expand();
+
+            // Применить тему Telegram
+            const theme = tg.themeParams;
+            const root = document.documentElement;
+
+            if (theme.bg_color) {
+                root.style.setProperty('--bg-color', theme.bg_color);
+            }
+            if (theme.text_color) {
+                root.style.setProperty('--text-color', theme.text_color);
+            }
+            if (theme.secondary_bg_color) {
+                root.style.setProperty('--secondary-bg', theme.secondary_bg_color);
+                root.style.setProperty('--segment-bg', theme.secondary_bg_color);
+            }
+            if (theme.hint_color) {
+                root.style.setProperty('--border-color', theme.hint_color);
+            }
+
+            // Получаем initData
+            const initData = tg.initData;
+            
+
+            if (initData) {
+                // Отправляем initData на сервер для аутентификации и получения cookie
+                fetch('/auth/telegram', {
+                    method: 'POST',
+                    headers: {
+                        'X-Telegram-Init-Data': initData,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    credentials: 'include'  // Для работы cookies в iframe (cross-site)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.redirect_url) {
+                        // Один студент - сразу переход (авторизация через initData)
+                        window.location.href = data.redirect_url;
+                    } else if (data.success && data.multiple_students) {
+                        // Несколько студентов - показать выбор
+                        showStudentSelect(data.students, data.telegram_id);
+                    } else if (!data.success) {
+                        // Ошибка аутентификации
+                        showManualAuth();
+                        if (data.error === 'Telegram account not linked to any student') {
+                            showError('Ваш Telegram аккаунт не привязан. Обратитесь к администратору для получения доступа.');
+                        } else {
+                            showError(data.error || 'Ошибка аутентификации. Попробуйте ввести токен вручную.');
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Auth error:', error);
+                    showManualAuth();
+                    showError('Ошибка соединения с сервером.');
+                });
+            } else {
+                // Нет initData - показать форму
+                showManualAuth();
+            }
+        } else {
+            // Не в Telegram Web App - показать форму
+            showManualAuth();
+        }
+    </script>
+</body>
+
+</html>

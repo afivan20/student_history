@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Логи - Админ-панель</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/semantic-ui@2.4.2/dist/semantic.min.css">
+</head>
+<body>
+    <div class="ui container" style="margin-top: 50px;">
+        <div class="ui menu">
+            <a class="item" href="/admin/dashboard">Dashboard</a>
+            <a class="item" href="/admin/students">Студенты</a>
+            <a class="item" href="/admin/telegram">Telegram</a>
+            <a class="item" href="/admin/tokens">Токены</a>
+            <a class="active item" href="/admin/logs">Логи</a>
+            <a class="item" href="/admin/cache">Кэширование</a>
+            <a class="item" href="/admin/messages">Сообщения</a>
+            <div class="right menu">
+                <a class="item" href="/admin/logout">Выход</a>
+            </div>
+        </div>
+
+        <h1 class="ui header">Логи доступа</h1>
+
+        <form class="ui form segment" method="GET" action="/admin/logs">
+            <h3>Фильтры</h3>
+            <div class="two fields">
+                <div class="field">
+                    <label>Студент</label>
+                    <select name="student_id" class="ui dropdown">
+                        <option value="">Все</option>
+                        {% for student in students %}
+                        <option value="{{ student.id }}" {% if selected_student_id == student.id %}selected{% endif %}>
+                            {{ student.full_name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Период (дней)</label>
+                    <select name="days" class="ui dropdown">
+                        <option value="1" {% if selected_days == 1 %}selected{% endif %}>1 день</option>
+                        <option value="7" {% if selected_days == 7 %}selected{% endif %}>7 дней</option>
+                        <option value="30" {% if selected_days == 30 %}selected{% endif %}>30 дней</option>
+                    </select>
+                </div>
+            </div>
+            <button class="ui primary button" type="submit">Применить</button>
+        </form>
+
+        <h2 class="ui header">Записи (последние 100)</h2>
+        <table class="ui celled table">
+            <thead>
+                <tr>
+                    <th>Время</th>
+                    <th>Студент</th>
+                    <th>Метод</th>
+                    <th>IP</th>
+                    <th>Статус</th>
+                    <th>Ошибка</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr {% if not log.success %}class="error"{% endif %}>
+                    <td>{{ log.accessed_at.strftime('%d.%m.%Y %H:%M:%S') }}</td>
+                    <td>{{ log.student.full_name if log.student else '-' }}</td>
+                    <td>
+                        {% if log.auth_method == 'telegram' %}
+                        <i class="telegram icon"></i> Telegram
+                        {% elif log.auth_method == 'token' %}
+                        <i class="key icon"></i> Token
+                        {% else %}
+                        {{ log.auth_method }}
+                        {% endif %}
+                    </td>
+                    <td><code>{{ log.ip_address }}</code></td>
+                    <td>
+                        {% if log.success %}
+                        <i class="green check icon"></i> Успех
+                        {% else %}
+                        <i class="red times icon"></i> Ошибка
+                        {% endif %}
+                    </td>
+                    <td>{{ log.error_message or '-' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Отправка сообщений - Админ-панель</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/semantic-ui@2.4.2/dist/semantic.min.css">
+</head>
+<body>
+    <div class="ui container" style="margin-top: 50px;">
+        <div class="ui menu">
+            <a class="item" href="/admin/dashboard">Dashboard</a>
+            <a class="item" href="/admin/students">Студенты</a>
+            <a class="item" href="/admin/telegram">Telegram</a>
+            <a class="item" href="/admin/tokens">Токены</a>
+            <a class="item" href="/admin/logs">Логи</a>
+            <a class="item" href="/admin/cache">Кэширование</a>
+            <a class="active item" href="/admin/messages">Сообщения</a>
+            <div class="right menu">
+                <a class="item" href="/admin/logout">Выход</a>
+            </div>
+        </div>
+
+        <h1 class="ui header">Отправка сообщений</h1>
+
+        <div class="ui info message">
+            <p><strong>Внимание:</strong> Сообщения можно отправлять только пользователям, которые нажали <code>/start</code> в боте (у них есть chat_id).</p>
+        </div>
+
+        <a class="ui button" href="/admin/messages/history">
+            <i class="history icon"></i>
+            История сообщений
+        </a>
+
+        <div class="ui divider"></div>
+
+        <form class="ui form segment" id="sendMessageForm" method="POST" action="/admin/messages/send">
+            <h3>Новое сообщение</h3>
+
+            <div class="field">
+                <label>Получатель</label>
+                <select name="telegram_auth_id" required class="ui search dropdown" id="recipientSelect">
+                    <option value="">Выберите получателя...</option>
+                    {% for r in recipients %}
+                    <option value="{{ r.id }}"
+                            {% if not r.has_chat_id %}disabled{% endif %}>
+                        {{ r.student_full_name }} ({{ r.student_slug }})
+                        - @{{ r.telegram_username }}
+                        [{{ r.telegram_id }}]
+                        {% if not r.has_chat_id %} - нет chat_id{% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="field">
+                <label>Текст сообщения</label>
+                <textarea name="message_text" rows="5" placeholder="Введите текст сообщения..."
+                          required maxlength="4096" id="messageText"></textarea>
+                <div class="ui small label" id="charCount">0 / 4096</div>
+            </div>
+
+            <div class="field">
+                <div class="ui info message" style="display: none;" id="formatHelp">
+                    <p><strong>Форматирование (HTML):</strong></p>
+                    <code>&lt;b&gt;жирный&lt;/b&gt;</code>,
+                    <code>&lt;i&gt;курсив&lt;/i&gt;</code>,
+                    <code>&lt;code&gt;код&lt;/code&gt;</code>
+                </div>
+            </div>
+
+            <button class="ui primary button" type="submit" id="sendBtn">
+                <i class="paper plane icon"></i>
+                Отправить
+            </button>
+        </form>
+
+        <div class="ui message" id="resultMessage" style="display: none;"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/semantic-ui@2.4.2/dist/semantic.min.js"></script>
+    <script>
+        console.log('Script loaded');
+
+        $(document).ready(function() {
+            console.log('jQuery ready');
+            $('.ui.dropdown').dropdown();
+
+            // Счетчик символов
+            $('#messageText').on('input', function() {
+                var len = $(this).val().length;
+                $('#charCount').text(len + ' / 4096');
+                if (len > 4000) {
+                    $('#charCount').addClass('red');
+                } else {
+                    $('#charCount').removeClass('red');
+                }
+            });
+
+            // Показать справку по форматированию при фокусе
+            $('#messageText').on('focus', function() {
+                $('#formatHelp').show();
+            });
+
+            // Отправка формы
+            $('#sendMessageForm').on('submit', function(e) {
+                e.preventDefault();
+                console.log('Form submit intercepted');
+
+                var $btn = $('#sendBtn');
+                $btn.addClass('loading disabled');
+
+                $.ajax({
+                    url: '/admin/messages/send',
+                    method: 'POST',
+                    data: $(this).serialize(),
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    success: function(response) {
+                        console.log('Response:', response);
+                        var $msg = $('#resultMessage');
+                        if (response.success) {
+                            $msg.removeClass('negative').addClass('positive')
+                                .html('<i class="check icon"></i> ' + response.message)
+                                .show();
+                            $('#messageText').val('');
+                            $('#charCount').text('0 / 4096');
+                        } else {
+                            $msg.removeClass('positive').addClass('negative')
+                                .html('<i class="times icon"></i> ' + response.message)
+                                .show();
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('AJAX error:', status, error);
+                        $('#resultMessage')
+                            .removeClass('positive').addClass('negative')
+                            .html('<i class="times icon"></i> Ошибка сервера: ' + xhr.statusText)
+                            .show();
+                    },
+                    complete: function() {
+                        $btn.removeClass('loading disabled');
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

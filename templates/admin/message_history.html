@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>История сообщений - Админ-панель</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/semantic-ui@2.4.2/dist/semantic.min.css">
+</head>
+<body>
+    <div class="ui container" style="margin-top: 50px;">
+        <div class="ui menu">
+            <a class="item" href="/admin/dashboard">Dashboard</a>
+            <a class="item" href="/admin/students">Студенты</a>
+            <a class="item" href="/admin/telegram">Telegram</a>
+            <a class="item" href="/admin/tokens">Токены</a>
+            <a class="item" href="/admin/logs">Логи</a>
+            <a class="item" href="/admin/cache">Кэширование</a>
+            <a class="active item" href="/admin/messages">Сообщения</a>
+            <div class="right menu">
+                <a class="item" href="/admin/logout">Выход</a>
+            </div>
+        </div>
+
+        <h1 class="ui header">История сообщений</h1>
+
+        <a class="ui button" href="/admin/messages">
+            <i class="arrow left icon"></i>
+            Назад к отправке
+        </a>
+
+        <div class="ui divider"></div>
+
+        <!-- Фильтр по получателю -->
+        <form class="ui form" method="GET">
+            <div class="inline fields">
+                <div class="field">
+                    <label>Фильтр по получателю:</label>
+                    <select name="telegram_auth_id" class="ui dropdown" onchange="this.form.submit()">
+                        <option value="">Все</option>
+                        {% for auth in telegram_auths %}
+                        <option value="{{ auth.id }}" {% if auth.id == selected_auth_id %}selected{% endif %}>
+                            {{ auth.student.full_name }} (@{{ auth.telegram_username or auth.telegram_id }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </form>
+
+        <table class="ui celled table">
+            <thead>
+                <tr>
+                    <th>Время</th>
+                    <th>Получатель</th>
+                    <th style="max-width: 400px;">Сообщение</th>
+                    <th>Статус</th>
+                    <th>Отправитель</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for msg in messages %}
+                <tr>
+                    <td>{{ msg.sent_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                    <td>
+                        {% if msg.telegram_auth %}
+                            {{ msg.telegram_auth.student.full_name }}<br>
+                            <small>@{{ msg.telegram_auth.telegram_username or '-' }}</small>
+                        {% else %}
+                            <span class="ui grey text">Удален</span><br>
+                            <small>ID: {{ msg.telegram_id }}</small>
+                        {% endif %}
+                    </td>
+                    <td style="max-width: 400px; word-wrap: break-word;">
+                        <div style="white-space: pre-wrap;">{{ msg.message_text[:200] }}{% if msg.message_text|length > 200 %}...{% endif %}</div>
+                    </td>
+                    <td>
+                        {% if msg.delivery_status == 'sent' %}
+                            <span class="ui green label"><i class="check icon"></i> Доставлено</span>
+                        {% elif msg.delivery_status == 'failed' %}
+                            <span class="ui red label" title="{{ msg.error_message }}">
+                                <i class="times icon"></i> Ошибка
+                            </span>
+                        {% else %}
+                            <span class="ui grey label"><i class="clock icon"></i> Ожидание</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ msg.sent_by or '-' }}</td>
+                </tr>
+                {% endfor %}
+                {% if not messages %}
+                <tr>
+                    <td colspan="5" class="center aligned">
+                        <i class="inbox icon"></i> Нет сообщений
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/semantic-ui@2.4.2/dist/semantic.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('.ui.dropdown').dropdown();
+        });
+    </script>
+</body>
+</html>

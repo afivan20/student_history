@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Telegram - Админ-панель</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/semantic-ui@2.4.2/dist/semantic.min.css">
+</head>
+<body>
+    <div class="ui container" style="margin-top: 50px;">
+        <div class="ui menu">
+            <a class="item" href="/admin/dashboard">Dashboard</a>
+            <a class="item" href="/admin/students">Студенты</a>
+            <a class="active item" href="/admin/telegram">Telegram</a>
+            <a class="item" href="/admin/tokens">Токены</a>
+            <a class="item" href="/admin/logs">Логи</a>
+            <a class="item" href="/admin/cache">Кэширование</a>
+            <a class="item" href="/admin/messages">Сообщения</a>
+            <div class="right menu">
+                <a class="item" href="/admin/logout">Выход</a>
+            </div>
+        </div>
+
+        <h1 class="ui header">Telegram привязки</h1>
+
+        <div class="ui info message">
+            <p><strong>Как узнать Telegram ID?</strong> Попросите студента написать боту <code>@userinfobot</code></p>
+            <p><strong>Несколько студентов:</strong> Один Telegram ID можно привязать к нескольким студентам (например, для родителя с двумя детьми). При входе пользователь сможет выбрать чью историю просматривать.</p>
+        </div>
+
+        <form class="ui form segment" method="POST" action="/admin/telegram/link">
+            <h3>Привязать Telegram ID</h3>
+            <div class="three fields">
+                <div class="field">
+                    <label>Студент</label>
+                    <select name="student_id" required class="ui dropdown">
+                        <option value="">Выберите...</option>
+                        {% for student in students %}
+                        <option value="{{ student.id }}">{{ student.full_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Telegram ID</label>
+                    <input type="text" name="telegram_id" placeholder="123456789" required>
+                </div>
+                <div class="field">
+                    <label>Username (опционально)</label>
+                    <input type="text" name="telegram_username" placeholder="@username">
+                </div>
+            </div>
+            <button class="ui primary button" type="submit">Привязать</button>
+        </form>
+
+        {% if pending_links %}
+        <h2 class="ui header">
+            <i class="clock outline icon"></i>
+            Ожидают привязки
+            <div class="ui teal label">{{ pending_links|length }}</div>
+        </h2>
+
+        <div class="ui warning message">
+            <p>Эти пользователи пытались авторизоваться через Telegram, но их аккаунты не привязаны к студентам.</p>
+        </div>
+
+        <table class="ui celled table">
+            <thead>
+                <tr>
+                    <th>Telegram ID</th>
+                    <th>Username</th>
+                    <th>Имя</th>
+                    <th>Последняя попытка</th>
+                    <th>Попыток</th>
+                    <th>Привязать к студенту</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for pending in pending_links %}
+                <tr>
+                    <td><code>{{ pending.telegram_id }}</code></td>
+                    <td>{{ pending.telegram_username or '-' }}</td>
+                    <td>{{ pending.telegram_first_name or '' }} {{ pending.telegram_last_name or '' }}</td>
+                    <td>{{ pending.last_attempt_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                    <td>
+                        <div class="ui {% if pending.attempt_count > 3 %}orange{% else %}grey{% endif %} label">
+                            {{ pending.attempt_count }}
+                        </div>
+                    </td>
+                    <td>
+                        <form method="POST" action="/admin/telegram/pending/{{ pending.id }}/approve" style="display: flex; gap: 5px;">
+                            <select name="student_id" required class="ui compact selection dropdown" style="min-width: 150px;">
+                                <option value="">Выберите...</option>
+                                {% for student in students %}
+                                <option value="{{ student.id }}">{{ student.full_name }}</option>
+                                {% endfor %}
+                            </select>
+                            <button class="ui tiny green button" type="submit">
+                                <i class="check icon"></i>
+                                Привязать
+                            </button>
+                        </form>
+                    </td>
+                    <td>
+                        <form method="POST" action="/admin/telegram/pending/{{ pending.id }}/reject" style="display: inline;">
+                            <button class="ui tiny red button" type="submit" title="Отклонить запрос">
+                                <i class="times icon"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="ui divider"></div>
+        {% endif %}
+
+        <h2 class="ui header">
+            <i class="telegram plane icon"></i>
+            Активные привязки
+            <div class="ui blue label">{{ telegram_auths|length }}</div>
+        </h2>
+        <table class="ui celled table">
+            <thead>
+                <tr>
+                    <th>Студент</th>
+                    <th>Telegram ID</th>
+                    <th>Username</th>
+                    <th>Привязан</th>
+                    <th>Последний вход</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for auth in telegram_auths %}
+                <tr>
+                    <td>{{ auth.student.full_name }}</td>
+                    <td><code>{{ auth.telegram_id }}</code></td>
+                    <td>{{ auth.telegram_username or '-' }}</td>
+                    <td>{{ auth.linked_at.strftime('%d.%m.%Y') }}</td>
+                    <td>{{ auth.last_auth_at.strftime('%d.%m %H:%M') }}</td>
+                    <td>
+                        <form method="POST" action="/admin/telegram/{{ auth.id }}/unlink" style="display: inline;">
+                            <button class="ui tiny red button" type="submit">Отвязать</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Токены - Админ-панель</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/semantic-ui@2.4.2/dist/semantic.min.css">
+</head>
+<body>
+    <div class="ui container" style="margin-top: 50px;">
+        <div class="ui menu">
+            <a class="item" href="/admin/dashboard">Dashboard</a>
+            <a class="item" href="/admin/students">Студенты</a>
+            <a class="item" href="/admin/telegram">Telegram</a>
+            <a class="active item" href="/admin/tokens">Токены</a>
+            <a class="item" href="/admin/logs">Логи</a>
+            <a class="item" href="/admin/cache">Кэширование</a>
+            <a class="item" href="/admin/messages">Сообщения</a>
+            <div class="right menu">
+                <a class="item" href="/admin/logout">Выход</a>
+            </div>
+        </div>
+
+        <h1 class="ui header">UUID Токены</h1>
+
+        <form class="ui form segment" method="POST" action="/admin/tokens/generate">
+            <h3>Сгенерировать новый токен</h3>
+            <div class="two fields">
+                <div class="field">
+                    <label>Студент</label>
+                    <select name="student_id" required class="ui dropdown">
+                        <option value="">Выберите...</option>
+                        {% for student in students %}
+                        <option value="{{ student.id }}">{{ student.full_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Примечание (опционально)</label>
+                    <input type="text" name="note" placeholder="Для браузера / Для родителей">
+                </div>
+            </div>
+            <button class="ui primary button" type="submit">Создать токен</button>
+        </form>
+
+        <h2 class="ui header">Активные токены</h2>
+        <table class="ui celled table">
+            <thead>
+                <tr>
+                    <th>Студент</th>
+                    <th>Токен</th>
+                    <th>Ссылка</th>
+                    <th>Создан</th>
+                    <th>Последнее использование</th>
+                    <th>Примечание</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for token in tokens %}
+                <tr>
+                    <td>{{ token.student.full_name }}</td>
+                    <td><code style="font-size: 0.8em;">{{ token.token[:8] }}...</code></td>
+                    <td><a href="/t/{{ token.token }}" target="_blank">{{ request.url.scheme }}://{{ request.url.netloc }}/t/{{ token.token[:8] }}...</a></td>
+                    <td>{{ token.created_at.strftime('%d.%m.%Y') }}</td>
+                    <td>{{ token.last_used_at.strftime('%d.%m %H:%M') if token.last_used_at else 'Не использовался' }}</td>
+                    <td>{{ token.note or '-' }}</td>
+                    <td>
+                        <form method="POST" action="/admin/tokens/{{ token.id }}/revoke" style="display: inline;">
+                            <button class="ui tiny red button" type="submit">Отозвать</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
