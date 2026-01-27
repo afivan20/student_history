@@ -42,11 +42,11 @@
                     <option value="">Выберите получателя...</option>
                     {% for r in recipients %}
                     <option value="{{ r.id }}"
-                            {% if not r.has_chat_id %}disabled{% endif %}>
+                            >
                         {{ r.student_full_name }} ({{ r.student_slug }})
                         - @{{ r.telegram_username }}
                         [{{ r.telegram_id }}]
-                        {% if not r.has_chat_id %} - нет chat_id{% endif %}
+                        
                     </option>
                     {% endfor %}
                 </select>

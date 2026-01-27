@@ -2,7 +2,6 @@
 Telegram Bot - Отправка сообщений по команде /start
 """
 import os
-from datetime import datetime
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 from dotenv import load_dotenv
@@ -14,56 +13,8 @@ BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обработчик команды /start - сохраняет chat_id и отправляет приветствие"""
-    from database import SessionLocal
-    from models import TelegramAuth, PendingTelegramLink
+    """Обработчик команды /start"""
 
-    user = update.effective_user
-    chat_id = str(update.message.chat_id)
-    telegram_id = str(user.id)
-
-    # Сохранить chat_id в БД
-    db = SessionLocal()
-    try:
-        # 1. Обновить TelegramAuth если пользователь уже привязан
-        telegram_auths = db.query(TelegramAuth).filter(
-            TelegramAuth.telegram_id == telegram_id,
-            TelegramAuth.is_active == True
-        ).all()
-
-        for auth in telegram_auths:
-            auth.chat_id = chat_id
-
-        # 2. Если не привязан - обновить или создать PendingTelegramLink
-        if not telegram_auths:
-            pending = db.query(PendingTelegramLink).filter(
-                PendingTelegramLink.telegram_id == telegram_id
-            ).first()
-
-            if pending:
-                pending.chat_id = chat_id
-                pending.last_attempt_at = datetime.utcnow()
-                pending.telegram_username = user.username
-                pending.telegram_first_name = user.first_name
-                pending.telegram_last_name = user.last_name
-            else:
-                pending = PendingTelegramLink(
-                    telegram_id=telegram_id,
-                    chat_id=chat_id,
-                    telegram_username=user.username,
-                    telegram_first_name=user.first_name,
-                    telegram_last_name=user.last_name
-                )
-                db.add(pending)
-
-        db.commit()
-    except Exception as e:
-        print(f"❌ Ошибка сохранения chat_id: {e}")
-        db.rollback()
-    finally:
-        db.close()
-
-    # Отправить приветствие
     username_bot = os.getenv('TELEGRAM_BOT_NAME')
     welcome_message = (
         "👋 Привет! Я бот для отслеживания истории уроков.\n\n"

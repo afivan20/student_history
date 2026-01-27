@@ -36,11 +36,7 @@ async def send_telegram_message(
     if not telegram_auth:
         return {"success": False, "message": "Telegram привязка не найдена"}
 
-    if not telegram_auth.chat_id:
-        return {
-            "success": False,
-            "message": "chat_id не известен. Попросите пользователя нажать /start в боте."
-        }
+
 
     # Проверить длину сообщения
     if len(message_text) > 4096:
@@ -52,7 +48,6 @@ async def send_telegram_message(
     # Создать запись в истории
     sent_message = SentMessage(
         telegram_auth_id=telegram_auth_id,
-        chat_id=telegram_auth.chat_id,
         telegram_id=telegram_auth.telegram_id,
         message_text=message_text,
         sent_by=sent_by,
@@ -65,7 +60,7 @@ async def send_telegram_message(
     try:
         bot = bot_app.bot
         result = await bot.send_message(
-            chat_id=int(telegram_auth.chat_id),
+            chat_id=int(telegram_auth.telegram_id),
             text=message_text,
             parse_mode='HTML'  # Поддержка базового форматирования
         )

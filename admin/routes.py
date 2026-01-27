@@ -286,8 +286,7 @@ async def approve_pending_link(
             telegram_id=pending.telegram_id,
             telegram_username=pending.telegram_username,
             telegram_first_name=pending.telegram_first_name,
-            telegram_last_name=pending.telegram_last_name,
-            chat_id=pending.chat_id  # Копируем chat_id если есть
+            telegram_last_name=pending.telegram_last_name
         )
         db.add(telegram_auth)
         db.delete(pending)
@@ -475,9 +474,7 @@ async def messages_page(
             "telegram_id": auth.telegram_id,
             "telegram_username": auth.telegram_username or "-",
             "student_slug": auth.student.slug,
-            "student_full_name": auth.student.full_name,
-            "chat_id": auth.chat_id,
-            "has_chat_id": auth.chat_id is not None
+            "student_full_name": auth.student.full_name
         })
 
     return templates.TemplateResponse(

@@ -50,8 +50,7 @@ class TelegramAuth(Base):
     telegram_username = Column(String(100), nullable=True)  # @username (может меняться)
     telegram_first_name = Column(String(255), nullable=True)
     telegram_last_name = Column(String(255), nullable=True)
-    chat_id = Column(String(50), nullable=True)  # Telegram chat ID для отправки сообщений
-
+   
     linked_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     last_auth_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
@@ -83,7 +82,7 @@ class PendingTelegramLink(Base):
     last_attempt_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     attempt_count = Column(Integer, default=1, nullable=False)
     ip_address = Column(String(45), nullable=True)
-    chat_id = Column(String(50), nullable=True)  # Telegram chat ID если известен
+   
 
     def __repr__(self):
         return f"<PendingTelegramLink(id={self.id}, telegram_id='{self.telegram_id}')>"
@@ -95,7 +94,6 @@ class SentMessage(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     telegram_auth_id = Column(Integer, ForeignKey('telegram_auth.id', ondelete='SET NULL'), nullable=True)
-    chat_id = Column(String(50), nullable=False)  # Куда отправлено
     telegram_id = Column(String(50), nullable=False)  # Telegram user ID
 
     message_text = Column(String(4096), nullable=False)  # Текст сообщения (Telegram limit: 4096)
@@ -115,7 +113,7 @@ class SentMessage(Base):
     )
 
     def __repr__(self):
-        return f"<SentMessage(id={self.id}, chat_id='{self.chat_id}', status='{self.delivery_status}')>"
+        return f"<SentMessage(id={self.id}, telegram_id='{self.telegram_id}', status='{self.delivery_status}')>"
 
 
 class AccessToken(Base):
