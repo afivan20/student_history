@@ -119,6 +119,16 @@
             </div>
         </div>
 
+        <!-- Предупреждение о веб-версии Telegram -->
+        <div id="web-warning" class="ui warning message" style="display: none;">
+            <div class="header">Внимание!</div>
+            <p>Вы используете веб-версию Telegram. Для корректной работы приложения, пожалуйста, откройте его через:</p>
+            <ul class="list">
+                <li><strong>Мобильное приложение</strong> Telegram (Android / iOS)</li>
+                <li><strong>Десктопное приложение</strong> Telegram (Windows / macOS / Linux)</li>
+            </ul>
+        </div>
+
         <!-- Сообщение об ошибке -->
         <div id="error-message" class="ui error message" style="display: none;">
             <i class="close icon"></i>
@@ -252,64 +262,74 @@
             tg.ready();
             tg.expand();
 
-            // Применить тему Telegram
-            const theme = tg.themeParams;
-            const root = document.documentElement;
+            // Проверка на веб-версию Telegram (web.telegram.org)
+            const platform = tg.platform;
+            const isWebVersion = platform === 'web' || platform === 'weba';
 
-            if (theme.bg_color) {
-                root.style.setProperty('--bg-color', theme.bg_color);
-            }
-            if (theme.text_color) {
-                root.style.setProperty('--text-color', theme.text_color);
-            }
-            if (theme.secondary_bg_color) {
-                root.style.setProperty('--secondary-bg', theme.secondary_bg_color);
-                root.style.setProperty('--segment-bg', theme.secondary_bg_color);
-            }
-            if (theme.hint_color) {
-                root.style.setProperty('--border-color', theme.hint_color);
-            }
-
-            // Получаем initData
-            const initData = tg.initData;
-            
-
-            if (initData) {
-                // Отправляем initData на сервер для аутентификации и получения cookie
-                fetch('/auth/telegram', {
-                    method: 'POST',
-                    headers: {
-                        'X-Telegram-Init-Data': initData,
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    credentials: 'include'  // Для работы cookies в iframe (cross-site)
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success && data.redirect_url) {
-                        // Один студент - сразу переход (авторизация через initData)
-                        window.location.href = data.redirect_url;
-                    } else if (data.success && data.multiple_students) {
-                        // Несколько студентов - показать выбор
-                        showStudentSelect(data.students, data.telegram_id);
-                    } else if (!data.success) {
-                        // Ошибка аутентификации
-                        showManualAuth();
-                        if (data.error === 'Telegram account not linked to any student') {
-                            showError('Ваш Telegram аккаунт не привязан. Обратитесь к администратору для получения доступа.');
-                        } else {
-                            showError(data.error || 'Ошибка аутентификации. Попробуйте ввести токен вручную.');
-                        }
-                    }
-                })
-                .catch(error => {
-                    console.error('Auth error:', error);
-                    showManualAuth();
-                    showError('Ошибка соединения с сервером.');
-                });
+            if (isWebVersion) {
+                // Скрыть loader, показать предупреждение
+                document.getElementById('telegram-auth').style.display = 'none';
+                document.getElementById('web-warning').style.display = 'block';
+                // Не продолжаем аутентификацию для веб-версии
             } else {
-                // Нет initData - показать форму
-                showManualAuth();
+                // Применить тему Telegram
+                const theme = tg.themeParams;
+                const root = document.documentElement;
+
+                if (theme.bg_color) {
+                    root.style.setProperty('--bg-color', theme.bg_color);
+                }
+                if (theme.text_color) {
+                    root.style.setProperty('--text-color', theme.text_color);
+                }
+                if (theme.secondary_bg_color) {
+                    root.style.setProperty('--secondary-bg', theme.secondary_bg_color);
+                    root.style.setProperty('--segment-bg', theme.secondary_bg_color);
+                }
+                if (theme.hint_color) {
+                    root.style.setProperty('--border-color', theme.hint_color);
+                }
+
+                // Получаем initData
+                const initData = tg.initData;
+
+                if (initData) {
+                    // Отправляем initData на сервер для аутентификации и получения cookie
+                    fetch('/auth/telegram', {
+                        method: 'POST',
+                        headers: {
+                            'X-Telegram-Init-Data': initData,
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        credentials: 'include'  // Для работы cookies в iframe (cross-site)
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success && data.redirect_url) {
+                            // Один студент - сразу переход (авторизация через initData)
+                            window.location.href = data.redirect_url;
+                        } else if (data.success && data.multiple_students) {
+                            // Несколько студентов - показать выбор
+                            showStudentSelect(data.students, data.telegram_id);
+                        } else if (!data.success) {
+                            // Ошибка аутентификации
+                            showManualAuth();
+                            if (data.error === 'Telegram account not linked to any student') {
+                                showError('Ваш Telegram аккаунт не привязан. Обратитесь к администратору для получения доступа.');
+                            } else {
+                                showError(data.error || 'Ошибка аутентификации. Попробуйте ввести токен вручную.');
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Auth error:', error);
+                        showManualAuth();
+                        showError('Ошибка соединения с сервером.');
+                    });
+                } else {
+                    // Нет initData - показать форму
+                    showManualAuth();
+                }
             }
         } else {
             // Не в Telegram Web App - показать форму

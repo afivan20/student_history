@@ -27,7 +27,7 @@ from middleware.security import add_security_headers
 from middleware.csrf import require_csrf
 from admin.routes import router as admin_router
 from services.google_sheets import get_sheets_manager
-from telegram_bot import start_bot
+
 
 # Загрузить переменные окружения
 load_dotenv()
@@ -79,17 +79,6 @@ async def startup_event():
     sheets_manager = get_sheets_manager()
     print("✅ Google Sheets connection manager initialized")
 
-    # Запустить Telegram бота в фоновом режиме
-    try:
-        bot_app = await start_bot()
-        if bot_app:
-            # Сохранить ссылку на приложение бота для корректного завершения
-            app.state.telegram_bot = bot_app
-            print("✅ Telegram bot started successfully")
-        else:
-            print("⚠️ Telegram bot NOT started (check BOT_TOKEN in .env)")
-    except Exception as e:
-        print(f"❌ Failed to start Telegram bot: {e}")
 
     print("✅ Приложение запущено, база данных инициализирована")
 
@@ -97,15 +86,6 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     """Cleanup on application shutdown"""
-    # Остановить Telegram бота
-    if hasattr(app.state, 'telegram_bot') and app.state.telegram_bot:
-        try:
-            await app.state.telegram_bot.updater.stop()
-            await app.state.telegram_bot.stop()
-            await app.state.telegram_bot.shutdown()
-            print("✅ Telegram bot stopped")
-        except Exception as e:
-            print(f"❌ Error stopping Telegram bot: {e}")
     
     # остановаить sheets manager (google страницы)
     sheets_manager = get_sheets_manager()

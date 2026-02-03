@@ -495,22 +495,14 @@ async def send_message_route(
         admin: str = Depends(require_admin),
         db: Session = Depends(get_db_session)
 ):
-    """Отправить сообщение через Telegram бота"""
-    bot_app = request.app.state.telegram_bot if hasattr(request.app.state, 'telegram_bot') else None
 
     # Проверка AJAX запроса
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or \
               'application/json' in request.headers.get('Accept', '')
 
-    if not bot_app:
-        error_msg = "Telegram бот не запущен"
-        if is_ajax:
-            return JSONResponse(content={"success": False, "message": error_msg}, status_code=500)
-        # Для обычного POST - редирект с flash-сообщением (простой вариант - просто редирект)
-        return RedirectResponse(url="/admin/messages?error=" + error_msg, status_code=302)
+
 
     result = await send_telegram_message(
-        bot_app=bot_app,
         telegram_auth_id=telegram_auth_id,
         message_text=message_text,
         sent_by=admin,
